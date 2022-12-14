@@ -1,0 +1,82 @@
+schemaVersion: 2.1.0
+metadata:
+  name: monster-combat
+  namespace: chicuongle-dev
+projects:
+  - name: monster-combat
+    git:
+        remotes:
+          origin: 'https://github.com/chicuongle/monster-combat.git'
+        checkoutFrom:
+          revision: main
+components:
+  - attributes:
+      app.kubernetes.io/name: tools
+      che-theia.eclipse.org/vscode-extensions:
+        - 'relative:extension/resources/github_com/redhat-developer/devspaces-vscode-extensions/releases/download/7_44-che-assets/java-0.82.0-369.vsix'
+        - 'relative:extension/resources/github_com/redhat-developer/devspaces-vscode-extensions/releases/download/7_44-che-assets/vscode-java-debug-0.26.0.vsix'
+        - 'relative:extension/resources/open-vsx_org/api/vscjava/vscode-java-test/0_28_1/file/vscjava.vscode-java-test-0.28.1.vsix'
+        - 'relative:extension/resources/github_com/fabric8-analytics/fabric8-analytics-vscode-extension/releases/download/0_3_6/fabric8-analytics-0.3.6.vsix'
+      che-theia.eclipse.org/vscode-preferences:
+        java.server.launchMode: Standard
+    container:
+      args:
+        - sh
+        - '-c'
+        - '${PLUGIN_REMOTE_ENDPOINT_EXECUTABLE}'
+      endpoints:
+        - exposure: none
+          name: debug
+          protocol: tcp
+          targetPort: 5005
+        - exposure: public
+          name: web
+          protocol: http
+          targetPort: 8080
+      env:
+        - name: PLUGIN_REMOTE_ENDPOINT_EXECUTABLE
+          value: /remote-endpoint/plugin-remote-endpoint
+        - name: THEIA_PLUGINS
+          value: 'local-dir:///plugins/sidecars/tools'
+        - name: CHE_DASHBOARD_URL
+          value: 'https://devspaces.apps.sandbox-m2.ll9k.p1.openshiftapps.com'
+        - name: CHE_PLUGIN_REGISTRY_URL
+          value: 'https://devspaces.apps.sandbox-m2.ll9k.p1.openshiftapps.com/plugin-registry/v3'
+        - name: CHE_PLUGIN_REGISTRY_INTERNAL_URL
+          value: 'http://plugin-registry.crw.svc:8080/v3'
+      image: 'registry.redhat.io/devspaces/udi-rhel8@sha256:b6d9371d7178cd9215afb61cd14861701735019b4699448be0bbfdd1f7e8115b'
+      memoryLimit: 4Gi
+      mountSources: true
+      sourceMapping: /projects
+      volumeMounts:
+        - name: m2
+          path: /home/user/.m2
+        - name: remote-endpoint
+          path: /remote-endpoint
+        - name: plugins
+          path: /plugins
+    name: tools
+  - name: m2
+    volume:
+      size: 1G
+  - name: gradle
+    volume:
+      size: 1G
+commands:
+  - exec:
+      commandLine: mvn package
+      component: tools
+      group:
+        isDefault: true
+        kind: build
+      workingDir: '${PROJECTS_ROOT}'
+    id: 1-package
+  - exec:
+      commandLine: 'mvn compile quarkus:dev'
+      component: tools
+      group:
+        isDefault: true
+        kind: run
+      label: Start Development mode (Hot reload + debug)
+      workingDir: '${PROJECTS_ROOT}'
+    id: 2-startdev
